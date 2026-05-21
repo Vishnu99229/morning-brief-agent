@@ -1,61 +1,40 @@
-# Morning Brief - Setup Guide
+Setup Guide
+Step-by-step checklist to go from fresh clone to live deployment.
 
-## 1. Run Database Migration
-
-Open Supabase SQL Editor, paste the contents of `src/db/migration-v2.sql`, then run it.
-
-## 2. Set Environment Variables
-
-Add to `.env` and Railway:
-
-- `ADMIN_PASSWORD` - your admin login password
-- `CRON_SECRET` - secret for the cron trigger endpoint
-
-## 3. Deploy
-
-```bash
-git push origin main
+1. Database Migration
+Open Supabase SQL Editor (Dashboard → SQL Editor → New Query), paste the contents of src/db/migration-v2.sql, and click Run.
+This creates the users, news_pool, and daily_briefing tables.
+2. Environment Variables
+Copy the example file and fill in your values:
+bashcp .env.example .env
+Then add the same variables to your Railway service under Settings → Variables.
+See .env.example for the full list of required variables.
+3. Deploy
+bashgit push origin main
 railway up --detach
-```
+4. Verify Landing Page
+Visit your deployment URL:
+https://<your-railway-url>/
+Fill out the waitlist form. Confirm the submission appears in the Supabase users table with status = 'pending'.
+5. Verify Admin Panel
+Visit:
+https://<your-railway-url>/admin
+Log in with your ADMIN_PASSWORD and verify you can:
 
-## 4. Test Landing Page
+See the waitlist
+Approve a user (this generates profile_json via LLM)
+Click "Call now" on an active user to trigger a test call
 
-Visit: `https://morning-brief-agent-production.up.railway.app/`
+6. Set Up Cron
+Railway doesn't support cron for hitting your own running service endpoint. Use an external scheduler like cron-job.org (free tier works):
+SettingValueURLhttps://<your-railway-url>/api/cron/trigger-callsMethodGETHeaderAuthorization: Bearer <your-CRON_SECRET>Schedule*/15 * * * * (every 15 minutes)
+This checks which active users are due for their daily briefing call and triggers it.
+Alternatively, create a separate Railway Cron Service that calls the same URL with the same auth header.
+7. Daily Operations
 
-Fill out the form. The submission should appear in the Supabase `users` table with `status = 'pending'`.
+News ingestion — Run npm run ingest once daily (or set up a second cron job for it)
+User approvals — Approve new waitlist signups via /admin
+Call monitoring — Check call logs in the Vapi dashboard
 
-## 5. Test Admin Panel
-
-Visit: `https://morning-brief-agent-production.up.railway.app/admin`
-
-Log in with `ADMIN_PASSWORD`.
-
-See waitlist, click Approve, and `profile_json` is generated via LLM.
-
-Click "Call now" on any active user. Their phone should ring.
-
-## 6. Set Up Daily Cron
-
-Use cron-job.org (free):
-
-- URL: `https://morning-brief-agent-production.up.railway.app/api/cron/trigger-calls`
-- Method: `GET`
-- Header: `Authorization: Bearer <your-CRON_SECRET>`
-- Schedule: every 15 minutes (`*/15 * * * *`)
-
-This checks which active users are due for their daily call and triggers it.
-
-Railway does not natively support cron for hitting your running service endpoint. You can also create a separate Railway Cron Service that calls the same URL every 15 minutes with the same authorization header.
-
-## 7. Daily Operations
-
-- News ingestion still runs via `npm run ingest` (run once daily, or add another cron).
-- Approve new waitlist users via `/admin`.
-- Monitor calls in the Vapi dashboard logs.
-
-## URLs
-
-- Landing page: `/`
-- Admin panel: `/admin`
-- Health check: `/health`
-- Webhook: `/webhook` (Vapi events)
+Routes Reference
+RoutePurpose/Landing page + waitlist signup/adminAdmin panel (password-protected)/healthHealth check endpoint/webhookVapi event webhook/api/cron/trigger-callsCron trigger for scheduled calls

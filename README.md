@@ -1,124 +1,108 @@
-# Morning Brief Agent
+ Morning Brief Agent
 
-A hyper-personalized daily news briefing script generator. Fetches news from RSS feeds and NewsAPI, ranks articles against a user profile using GPT-4o, and generates a voice-ready briefing script.
+Your personal AI-powered morning news briefing — fetched, ranked, and read aloud to you every day.
 
-**Day 1 of 3** — Data pipeline + script generation (CLI only). Day 2 will add the Vapi voice agent consuming `daily_briefing.selected_articles_json`.
+Morning Brief Agent pulls news from multiple sources, scores each article against your personal interests using GPT-4o, and generates a voice-ready briefing script. Pair it with Vapi to get a phone call every morning with just the news that matters to you.
 
----
+How It Works
+┌─────────────────┐     ┌─────────────────┐
+│  RSS Feeds (8)  │     │  NewsAPI (5)     │
+└────────┬────────┘     └────────┬────────┘
+         │                       │
+         └───────────┬───────────┘
+                     ▼
+              Deduplicate &
+             Scrape Full Text
+                     │
+                     ▼
+           ┌─────────────────┐
+           │   news_pool     │  ← Supabase
+           └────────┬────────┘
+                    │
+                    ▼
+         GPT-4o Relevance Scoring
+        (each article vs. your profile)
+                    │
+                    ▼
+              Top 10 Articles
+                    │
+                    ▼
+         GPT-4o Script Generation
+                    │
+                    ▼
+           ┌─────────────────┐
+           │ daily_briefing  │  → Voice-ready script
+           └─────────────────┘
 
-## Setup
+Quick Start
+Prerequisites
 
-### 1. Install dependencies
+Node.js v18+
+A Supabase project
+API keys for OpenAI and NewsAPI
 
-```bash
+1. Clone & install
+bashgit clone https://github.com/Vishnu99229/morning-brief-agent.git
 cd morning-brief-agent
 npm install
-```
+2. Set up environment variables
+bashcp .env.example .env
+Then fill in your .env:
+VariableSourceSUPABASE_URLSupabase → Settings → API → Project URLSUPABASE_SERVICE_KEYSupabase → Settings → API → service_role keyOPENAI_API_KEYplatform.openai.com → API KeysNEWSAPI_KEYnewsapi.org → Register
+3. Create the database tables
+Open Supabase SQL Editor, paste the contents of src/db/schema.sql, and run it.
+4. Seed a test user
+bashnpm run seed
+Save the printed UUID — you'll need it for the next step.
+5. Run the full pipeline
+bashnpm run daily -- <userId>
+This runs ingest → rank → script end to end and saves the briefing to your database.
 
-### 2. Configure environment
+Commands
+CommandDescriptionnpm run daily -- <userId>Full pipeline: ingest → rank → generate scriptnpm run ingestFetch articles from RSS + NewsAPI, dedupe, scrape, and storenpm run rank -- <userId>Score articles against user profile, print top 10npm run script -- <userId>Rank + generate voice-ready briefing scriptnpm run seedSeed (or re-seed) the test user profile
 
-```bash
-cp .env.example .env
-```
+Tech Stack
 
-Fill in your `.env`:
+Runtime — Node.js
+Database — Supabase (PostgreSQL)
+AI — OpenAI GPT-4o (ranking + script generation)
+News Sources — RSS feeds (8 sources) + NewsAPI (5 query categories)
+Voice Delivery — Vapi + Twilio (phone calls)
+Text-to-Speech — ElevenLabs
+Hosting — Railway
 
-| Variable | Where to get it |
-|---|---|
-| `SUPABASE_URL` | Supabase Dashboard → Settings → API → Project URL |
-| `SUPABASE_SERVICE_KEY` | Supabase Dashboard → Settings → API → `service_role` key |
-| `OPENAI_API_KEY` | [platform.openai.com/api-keys](https://platform.openai.com/api-keys) |
-| `NEWSAPI_KEY` | [newsapi.org/register](https://newsapi.org/register) |
 
-### 3. Create database tables
-
-Open your **Supabase SQL Editor** (Dashboard → SQL Editor → New Query), paste the contents of `src/db/schema.sql`, and click **Run**.
-
-```bash
-npm run db:init   # prints a reminder of this step
-```
-
-### 4. Seed the test user
-
-```bash
-npm run seed
-```
-
-This will print the user's UUID — **save it**, you'll need it for the next commands.
-
-### 5. Run the full pipeline
-
-```bash
-npm run daily -- <userId>
-```
-
-This runs: **ingest → rank → script** in sequence.
-
----
-
-## Individual commands
-
-| Command | What it does |
-|---|---|
-| `npm run ingest` | Fetch RSS + NewsAPI, dedupe, scrape full text, upsert to `news_pool` |
-| `npm run rank -- <userId>` | Score all recent articles against user profile, print top 10 |
-| `npm run script -- <userId>` | Rank + generate briefing script, save to `daily_briefing` |
-| `npm run daily -- <userId>` | Full pipeline: ingest → rank → script |
-| `npm run seed` | (Re)seed the test user profile |
-
----
-
-## Tuning the ranking prompt
-
-If ranking results feel off (too many irrelevant articles scoring high, or good articles getting filtered out), edit `src/rank/prompt.ts`:
-
-### Common tweaks:
-
-- **Lower the threshold**: In `src/rank/rank.ts`, change the `score >= 6` filter to `>= 5` to be more permissive.
-- **Adjust scoring rubric**: Edit the system message in `src/rank/prompt.ts` to change what scores map to. For example, if location-based news is overwhelming the results, demote "locations" from 7-9 range to 4-6.
-- **Add scoring examples**: Add few-shot examples to the system message showing an article, the expected score, and why.
-- **Tune VIP sensitivity**: If VIP entity matches aren't scoring 10, make the instruction more explicit: _"If ANY vip_entity name appears in the title or content, score 10 regardless of other factors."_
-- **Broaden/narrow explicit_filters**: Edit the user profile's `explicit_filters` array in `seed-user.ts` (and re-run `npm run seed`) to block or allow more categories.
-
-### Debugging scores:
-
-After ranking, the CLI prints a table of all top-10 articles with scores and reasons. The full ranking debug (all articles, all scores) is saved to `daily_briefing.ranking_debug_json` for deeper analysis.
-
----
-
-## Architecture
-
-```
-RSS Feeds (8 sources)  ─┐
-                         ├─→ Dedupe ─→ Scrape Full Text ─→ news_pool (Supabase)
-NewsAPI (5 queries)    ─┘
-
-news_pool ─→ GPT-4o Ranking (per-article scoring) ─→ Top 10
-
-Top 10 + User Profile ─→ GPT-4o Script Generation ─→ daily_briefing
-```
-
----
-
-## What's next (Day 2+)
-
-- **Day 2**: Vapi voice agent that reads `daily_briefing.briefing_script` aloud, with `selected_articles_json` available for follow-up Q&A.
-- **Day 3**: Scheduling (cron), user preferences API, feedback loop.
-
----
-
-## Landing Page, Admin, and Cron
-
-The webhook server also serves:
-
-- `/` - landing page and waitlist signup form
-- `/admin` - password-protected admin panel
-- `/api/cron/trigger-calls` - scheduled call trigger endpoint
-
-Railway does not natively support cron for hitting an endpoint on your running service. Create a separate Railway Cron Service, or use cron-job.org, to call `https://morning-brief-agent-production.up.railway.app/api/cron/trigger-calls` every 15 minutes with this header:
-
-```text
+Web & Admin
+The server also includes:
+RoutePurpose/Landing page with waitlist signup/adminPassword-protected admin panel/api/cron/trigger-callsCron endpoint to trigger scheduled calls
+Scheduling Calls
+Set up a cron job (e.g. via cron-job.org or a Railway Cron Service) to hit:
+POST https://<your-railway-url>/api/cron/trigger-calls
 Authorization: Bearer <your-CRON_SECRET>
-```
+Run it every 15 minutes (or at your preferred interval).
 
-See `SETUP.md` for the migration, deploy, and testing checklist.
+Tuning the Ranking
+If the briefing picks up irrelevant articles or misses important ones, you can tune the ranking:
+
+Adjust the score threshold — In src/rank/rank.ts, change score >= 6 to a lower/higher value.
+Edit the scoring rubric — Modify the system prompt in src/rank/prompt.ts to shift how categories are weighted.
+Add few-shot examples — Show the model what a "good" vs "bad" score looks like for specific article types.
+Tweak VIP entities — Make high-priority entity matches more explicit in the prompt.
+Update filters — Edit explicit_filters in seed-user.ts and re-run npm run seed.
+
+After ranking, the CLI prints the top 10 articles with scores and reasoning. Full debug output is saved to daily_briefing.ranking_debug_json.
+
+Roadmap
+
+ News ingestion pipeline (RSS + NewsAPI)
+ GPT-4o relevance ranking against user profiles
+ Voice-ready script generation
+ Landing page + admin panel
+ Vapi voice agent for phone delivery
+ User preferences API
+ Feedback loop (thumbs up/down on articles)
+ Multi-user scheduling via cron
+
+
+License
+MIT

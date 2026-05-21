@@ -13,8 +13,12 @@ const supabase = createClient(
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "morningbrief2026";
-const ADMIN_TOKEN = Buffer.from(ADMIN_PASSWORD + ":admin-secret").toString("base64");
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
+if (!ADMIN_PASSWORD) {
+  throw new Error("ADMIN_PASSWORD environment variable is required");
+}
+const ADMIN_SECRET = process.env.ADMIN_SECRET || "fallback-secret-remove-in-prod";
+const ADMIN_TOKEN = Buffer.from(ADMIN_PASSWORD + ":" + ADMIN_SECRET).toString("base64");
 const CRON_SECRET = process.env.CRON_SECRET || "cron-secret-default";
 
 function parseBody(req: IncomingMessage): Promise<Record<string, any>> {

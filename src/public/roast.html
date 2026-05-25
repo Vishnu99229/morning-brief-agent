@@ -1,361 +1,330 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Roast My Resume</title>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <style>
-    :root {
-      --bg: #080808;
-      --panel: #15110f;
-      --text: #fff7ed;
-      --muted: #b8a99f;
-      --fire: #ff5a1f;
-      --fire-2: #ffb000;
-      --border: rgba(255, 255, 255, 0.12);
-      --danger: #ff7a7a;
-      --success: #7dffb2;
-    }
-
-    * { box-sizing: border-box; }
-
-    body {
-      margin: 0;
-      min-height: 100vh;
-      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      color: var(--text);
-      background:
-        radial-gradient(circle at 20% 20%, rgba(255, 90, 31, 0.24), transparent 32%),
-        radial-gradient(circle at 80% 10%, rgba(255, 176, 0, 0.16), transparent 28%),
-        linear-gradient(135deg, #080808 0%, #140b08 100%);
-      display: grid;
-      place-items: center;
-      padding: 24px;
-    }
-
-    main {
-      width: min(1120px, 100%);
-      display: grid;
-      grid-template-columns: 1fr 420px;
-      gap: 28px;
-      align-items: center;
-    }
-
-    .hero {
-      padding: 20px 0;
-    }
-
-    .eyebrow {
-      display: inline-flex;
-      gap: 8px;
-      align-items: center;
-      padding: 8px 12px;
-      border: 1px solid rgba(255, 90, 31, 0.35);
-      border-radius: 999px;
-      color: #ffd2bf;
-      background: rgba(255, 90, 31, 0.08);
-      font-size: 13px;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-      font-weight: 700;
-    }
-
-    h1 {
-      margin: 22px 0 16px;
-      font-size: clamp(52px, 8vw, 104px);
-      line-height: 0.88;
-      letter-spacing: -0.07em;
-      max-width: 720px;
-    }
-
-    .gradient {
-      background: linear-gradient(90deg, var(--fire), var(--fire-2));
-      -webkit-background-clip: text;
-      background-clip: text;
-      color: transparent;
-    }
-
-    .subhead {
-      max-width: 640px;
-      font-size: clamp(19px, 2vw, 27px);
-      line-height: 1.25;
-      color: var(--muted);
-      margin: 0 0 28px;
-    }
-
-    .promise {
-      display: flex;
-      gap: 12px;
-      flex-wrap: wrap;
-      color: #ffd9c9;
-      font-size: 14px;
-    }
-
-    .promise span {
-      border: 1px solid var(--border);
-      border-radius: 999px;
-      padding: 9px 12px;
-      background: rgba(255, 255, 255, 0.04);
-    }
-
-    .card {
-      border: 1px solid var(--border);
-      background: rgba(21, 17, 15, 0.88);
-      box-shadow: 0 24px 90px rgba(0, 0, 0, 0.42);
-      backdrop-filter: blur(18px);
-      border-radius: 28px;
-      padding: 24px;
-    }
-
-    label {
-      display: block;
-      font-size: 13px;
-      font-weight: 800;
-      letter-spacing: 0.06em;
-      text-transform: uppercase;
-      color: #ffd2bf;
-      margin: 0 0 8px;
-    }
-
-    input, textarea {
-      width: 100%;
-      border: 1px solid var(--border);
-      border-radius: 16px;
-      background: rgba(0, 0, 0, 0.3);
-      color: var(--text);
-      padding: 14px 15px;
-      font: inherit;
-      outline: none;
-    }
-
-    input:focus, textarea:focus {
-      border-color: rgba(255, 90, 31, 0.8);
-      box-shadow: 0 0 0 3px rgba(255, 90, 31, 0.14);
-    }
-
-    input[type="file"] {
-      padding: 12px;
-      cursor: pointer;
-    }
-
-    textarea {
-      min-height: 88px;
-      resize: vertical;
-      line-height: 1.4;
-    }
-
-    .field { margin-bottom: 16px; }
-
-    .preview {
-      display: none;
-      margin-top: 10px;
-      border: 1px dashed rgba(255, 255, 255, 0.18);
-      border-radius: 14px;
-      color: #d9ccc4;
-      background: rgba(255, 255, 255, 0.035);
-      padding: 12px;
-      font-size: 13px;
-      line-height: 1.35;
-      max-height: 92px;
-      overflow: hidden;
-    }
-
-    .hint {
-      margin-top: 7px;
-      color: #8f8179;
-      font-size: 12px;
-    }
-
-    button {
-      width: 100%;
-      border: 0;
-      border-radius: 18px;
-      padding: 16px 18px;
-      color: #1b0802;
-      background: linear-gradient(90deg, var(--fire), var(--fire-2));
-      font-weight: 900;
-      font-size: 17px;
-      cursor: pointer;
-      transition: transform 0.18s ease, filter 0.18s ease;
-    }
-
-    button:hover { transform: translateY(-1px); filter: brightness(1.08); }
-    button:disabled { cursor: not-allowed; filter: grayscale(0.4); opacity: 0.75; transform: none; }
-
-    .status {
-      min-height: 24px;
-      margin-top: 14px;
-      font-size: 14px;
-      line-height: 1.35;
-      color: var(--muted);
-    }
-
-    .status.error { color: var(--danger); }
-    .status.success { color: var(--success); }
-
-    @media (max-width: 860px) {
-      body { align-items: start; }
-      main { grid-template-columns: 1fr; }
-      h1 { font-size: clamp(48px, 16vw, 82px); }
-      .card { padding: 20px; }
-    }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Roast My Resume — Get brutally honest feedback in 60 seconds</title>
+<meta name="description" content="Upload your resume. Get a call from an AI recruiter who will tear it apart — with love. Brutally honest. Genuinely funny. Actually useful.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Instrument+Serif:ital@0;1&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+  :root {
+    --bg: #090909;
+    --surface: #141414;
+    --border: #222;
+    --border-focus: #c1362e;
+    --text: #e8e8e8;
+    --text-muted: #777;
+    --accent: #c1362e;
+    --accent-hover: #d94a42;
+    --accent-glow: rgba(193, 54, 46, 0.15);
+    --font-display: 'Instrument Serif', Georgia, serif;
+    --font-body: 'DM Sans', -apple-system, sans-serif;
+    --font-mono: 'DM Mono', 'SF Mono', monospace;
+  }
+  html { font-size: 16px; -webkit-font-smoothing: antialiased; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-body);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    opacity: 0.03;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 0;
+  }
+  .page {
+    position: relative;
+    z-index: 1;
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 60px 32px 80px;
+    display: grid;
+    grid-template-columns: 1fr 420px;
+    gap: 80px;
+    align-items: start;
+    min-height: 100vh;
+  }
+  .hero { padding-top: 40px; }
+  .tagline {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    font-weight: 500;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 32px;
+  }
+  h1 {
+    font-family: var(--font-display);
+    font-weight: 400;
+    font-size: clamp(3rem, 6vw, 4.8rem);
+    line-height: 1.05;
+    letter-spacing: -0.02em;
+    margin-bottom: 28px;
+  }
+  h1 .italic { font-style: italic; color: var(--accent); }
+  .subtitle {
+    font-size: 1.1rem;
+    line-height: 1.6;
+    color: var(--text-muted);
+    max-width: 440px;
+    margin-bottom: 48px;
+  }
+  .how-it-works { display: flex; flex-direction: column; gap: 20px; }
+  .step { display: flex; align-items: baseline; gap: 16px; }
+  .step-num {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    font-weight: 500;
+    color: var(--accent);
+    letter-spacing: 0.05em;
+    flex-shrink: 0;
+    width: 20px;
+  }
+  .step-text { font-size: 0.95rem; color: var(--text-muted); line-height: 1.5; }
+  .divider { width: 40px; height: 1px; background: var(--border); margin: 12px 0 12px 36px; }
+  .form-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 36px 32px;
+    position: sticky;
+    top: 60px;
+  }
+  .form-title { font-family: var(--font-display); font-size: 1.5rem; margin-bottom: 8px; }
+  .form-subtitle { font-size: 0.85rem; color: var(--text-muted); margin-bottom: 28px; line-height: 1.5; }
+  .field { margin-bottom: 20px; }
+  label {
+    display: block;
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    font-weight: 500;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 8px;
+  }
+  input[type="text"], input[type="tel"], textarea {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 14px;
+    font-family: var(--font-body);
+    font-size: 0.95rem;
+    color: var(--text);
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  input:focus, textarea:focus { border-color: var(--border-focus); box-shadow: 0 0 0 3px var(--accent-glow); }
+  input::placeholder, textarea::placeholder { color: #444; }
+  .phone-hint { font-size: 0.75rem; color: #555; margin-top: 5px; }
+  .file-upload-area {
+    width: 100%;
+    background: var(--bg);
+    border: 1px dashed var(--border);
+    border-radius: 8px;
+    padding: 24px 14px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s;
+    position: relative;
+  }
+  .file-upload-area:hover { border-color: #444; background: #0e0e0e; }
+  .file-upload-area.has-file { border-color: var(--accent); border-style: solid; background: var(--accent-glow); }
+  .file-upload-area input[type="file"] { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+  .upload-label { font-size: 0.85rem; color: var(--text-muted); line-height: 1.5; }
+  .upload-label strong { color: var(--accent); font-weight: 500; }
+  .file-name { font-family: var(--font-mono); font-size: 0.8rem; color: var(--accent); margin-top: 4px; }
+  .paste-section { margin-top: -4px; margin-bottom: 20px; }
+  .paste-toggle {
+    font-size: 0.8rem;
+    color: #555;
+    cursor: pointer;
+    border: none;
+    background: none;
+    font-family: var(--font-body);
+    padding: 0;
+    transition: color 0.2s;
+  }
+  .paste-toggle:hover { color: var(--text-muted); }
+  .paste-area { display: none; margin-top: 12px; }
+  .paste-area.visible { display: block; }
+  textarea { min-height: 100px; resize: vertical; }
+  .submit-btn {
+    width: 100%;
+    padding: 14px 24px;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-family: var(--font-body);
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.1s;
+    letter-spacing: 0.01em;
+  }
+  .submit-btn:hover { background: var(--accent-hover); }
+  .submit-btn:active { transform: scale(0.985); }
+  .submit-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+  .status {
+    margin-top: 16px;
+    padding: 12px 14px;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    line-height: 1.5;
+    display: none;
+  }
+  .status.visible { display: block; }
+  .status.loading { background: rgba(255,255,255,0.04); color: var(--text-muted); border: 1px solid var(--border); }
+  .status.success { background: rgba(46,160,67,0.08); color: #4ade80; border: 1px solid rgba(46,160,67,0.2); }
+  .status.error { background: rgba(193,54,46,0.08); color: #f87171; border: 1px solid rgba(193,54,46,0.2); }
+  .footer {
+    grid-column: 1 / -1;
+    padding-top: 48px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .footer-text { font-size: 0.8rem; color: #444; }
+  .footer-cost { font-family: var(--font-mono); font-size: 0.75rem; color: #444; }
+  @media (max-width: 820px) {
+    .page { grid-template-columns: 1fr; gap: 40px; padding: 40px 20px 60px; }
+    .hero { padding-top: 0; }
+    .form-card { position: static; }
+    .footer { flex-direction: column; gap: 8px; text-align: center; }
+  }
+</style>
 </head>
 <body>
-  <main>
-    <section class="hero">
-      <div class="eyebrow">60-second recruiter intervention</div>
-      <h1>Roast My <span class="gradient">Resume</span></h1>
-      <p class="subhead">Upload your resume. Enter your number. Get a call from an AI recruiter who will destroy it — with love.</p>
-      <div class="promise">
-        <span>PDF in</span>
-        <span>GPT-4o roast</span>
-        <span>Phone rings fast</span>
-        <span>Funny, not cruel</span>
+<div class="page">
+  <div class="hero">
+    <div class="tagline">60-second recruiter intervention</div>
+    <h1>Roast My<br><span class="italic">Resume</span></h1>
+    <p class="subtitle">Upload your resume. Enter your number. An AI recruiter calls you with the feedback hiring managers think but never say.</p>
+    <div class="how-it-works">
+      <div class="step"><span class="step-num">01</span><span class="step-text">Upload your resume as PDF or paste the text</span></div>
+      <div class="divider"></div>
+      <div class="step"><span class="step-num">02</span><span class="step-text">GPT-4o reads it and writes a personalized roast</span></div>
+      <div class="divider"></div>
+      <div class="step"><span class="step-num">03</span><span class="step-text">Your phone rings. Pick up if you dare.</span></div>
+    </div>
+  </div>
+  <div class="form-card">
+    <div class="form-title">Get roasted</div>
+    <div class="form-subtitle">Free. One call per hour. Real advice buried in the burns.</div>
+    <form id="roastForm">
+      <div class="field">
+        <label for="name">Name</label>
+        <input type="text" id="name" placeholder="What should the recruiter call you?" required>
       </div>
-    </section>
-
-    <section class="card">
-      <form id="roast-form">
-        <div class="field">
-          <label for="name">Name</label>
-          <input id="name" name="name" type="text" autocomplete="name" placeholder="Your name" required>
+      <div class="field">
+        <label for="phone">Phone</label>
+        <input type="tel" id="phone" placeholder="+919876543210" required>
+        <div class="phone-hint">International format with country code</div>
+      </div>
+      <div class="field">
+        <label>Resume</label>
+        <div class="file-upload-area" id="uploadArea">
+          <input type="file" id="pdfFile" accept=".pdf">
+          <div class="upload-label" id="uploadLabel"><strong>Choose a PDF</strong> or drag it here</div>
+          <div class="file-name" id="fileName"></div>
         </div>
-
-        <div class="field">
-          <label for="phone">Phone</label>
-          <input id="phone" name="phone" type="tel" autocomplete="tel" value="+91" required>
-          <div class="hint">Use international format. Example: +919876543210</div>
+      </div>
+      <div class="paste-section">
+        <button type="button" class="paste-toggle" id="pasteToggle">PDF not working? Paste text instead</button>
+        <div class="paste-area" id="pasteArea">
+          <textarea id="resumeText" placeholder="Paste your resume text here..."></textarea>
         </div>
-
-        <div class="field">
-          <label for="resume-file">PDF resume</label>
-          <input id="resume-file" type="file" accept=".pdf,application/pdf">
-          <div id="preview" class="preview"></div>
-        </div>
-
-        <div class="field">
-          <label for="resume-text">Or paste your resume text here</label>
-          <textarea id="resume-text" placeholder="For PDFs that refuse to be read, paste the resume text here."></textarea>
-        </div>
-
-        <button id="submit-btn" type="submit">Roast Me 🔥</button>
-        <div id="status" class="status"></div>
-      </form>
-    </section>
-  </main>
-
-  <script>
-    const fileInput = document.getElementById('resume-file');
-    const resumeText = document.getElementById('resume-text');
-    const preview = document.getElementById('preview');
-    const form = document.getElementById('roast-form');
-    const statusEl = document.getElementById('status');
-    const submitBtn = document.getElementById('submit-btn');
-
-    let extractedText = '';
-
-    if (window.pdfjsLib) {
-      pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-    }
-
-    function setStatus(message, type = '') {
-      statusEl.textContent = message;
-      statusEl.className = 'status' + (type ? ' ' + type : '');
-    }
-
-    function showPreview(text) {
-      preview.style.display = 'block';
-      preview.textContent = text.slice(0, 520) + (text.length > 520 ? '...' : '');
-    }
-
-    function normalizePhone(value) {
-      let cleaned = value.trim().replace(/[\s-]/g, '');
-      if (cleaned && !cleaned.startsWith('+')) cleaned = '+' + cleaned.replace(/^0+/, '');
-      return cleaned;
-    }
-
-    fileInput.addEventListener('change', async () => {
-      const file = fileInput.files && fileInput.files[0];
+      </div>
+      <button type="submit" class="submit-btn" id="submitBtn">Roast my resume</button>
+    </form>
+    <div class="status" id="status"></div>
+  </div>
+  <div class="footer">
+    <span class="footer-text">Built with Vapi, GPT-4o, and zero mercy.</span>
+    <span class="footer-cost">roastmyresume.wtf</span>
+  </div>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script>
+  pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  const form = document.getElementById('roastForm');
+  const pdfInput = document.getElementById('pdfFile');
+  const uploadArea = document.getElementById('uploadArea');
+  const uploadLabel = document.getElementById('uploadLabel');
+  const fileNameEl = document.getElementById('fileName');
+  const pasteToggle = document.getElementById('pasteToggle');
+  const pasteArea = document.getElementById('pasteArea');
+  const resumeTextarea = document.getElementById('resumeText');
+  const submitBtn = document.getElementById('submitBtn');
+  const statusEl = document.getElementById('status');
+  let extractedText = '';
+  pdfInput.addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    uploadArea.classList.add('has-file');
+    fileNameEl.textContent = file.name;
+    uploadLabel.innerHTML = '<strong>Selected</strong>';
+    try {
+      const arrayBuffer = await file.arrayBuffer();
+      const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+      let text = '';
+      for (let i = 1; i <= pdf.numPages; i++) {
+        const page = await pdf.getPage(i);
+        const content = await page.getTextContent();
+        text += content.items.map(item => item.str).join(' ') + '\n';
+      }
+      extractedText = text.trim();
+      if (extractedText.length < 50) {
+        showStatus('Could not extract enough text from this PDF. Try pasting your resume text instead.', 'error');
+        pasteArea.classList.add('visible');
+      }
+    } catch (err) {
+      showStatus('Could not read this PDF. Try pasting your resume text instead.', 'error');
+      pasteArea.classList.add('visible');
       extractedText = '';
-      preview.style.display = 'none';
-      setStatus('');
-
-      if (!file) return;
-      if (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) {
-        setStatus('Please upload a PDF file.', 'error');
-        return;
-      }
-
-      try {
-        setStatus('Reading your PDF...');
-        const buffer = await file.arrayBuffer();
-        const pdf = await pdfjsLib.getDocument({ data: buffer }).promise;
-        const pages = [];
-
-        for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
-          const page = await pdf.getPage(pageNum);
-          const content = await page.getTextContent();
-          const text = content.items.map((item) => item.str).join(' ');
-          pages.push(text);
-        }
-
-        extractedText = pages.join('\\n').replace(/\\s+/g, ' ').trim();
-        if (extractedText.length < 50) {
-          setStatus(\"Couldn't read your resume. Try a different PDF or paste your resume text instead.\", 'error');
-          return;
-        }
-
-        resumeText.value = extractedText;
-        showPreview(extractedText);
-        setStatus('Resume text extracted. The recruiter is sharpening the knife.');
-      } catch (err) {
-        console.error(err);
-        setStatus(\"Couldn't read your resume. Try a different PDF or paste your resume text instead.\", 'error');
-      }
-    });
-
-    form.addEventListener('submit', async (event) => {
-      event.preventDefault();
-      const name = document.getElementById('name').value.trim();
-      const phone = normalizePhone(document.getElementById('phone').value);
-      const text = (resumeText.value || extractedText).trim();
-
-      if (!name) return setStatus('Name is required.', 'error');
-      if (!/^\\+\\d{10,15}$/.test(phone)) return setStatus('Phone must be in international format, like +919876543210.', 'error');
-      if (text.length < 100) return setStatus('Resume text is too short. Paste at least a few lines.', 'error');
-
-      submitBtn.disabled = true;
-      submitBtn.textContent = 'Roasting...';
-      setStatus('Generating your roast... your phone will ring in about 15 seconds');
-
-      try {
-        const res = await fetch('/api/roast', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name, phone, resume_text: text }),
-        });
-        const data = await res.json().catch(() => ({}));
-
-        if (res.status === 429) {
-          setStatus('Easy there. One roast per hour. Try again later.', 'error');
-          return;
-        }
-        if (!res.ok) {
-          setStatus(data.error || 'Something broke while preparing the roast.', 'error');
-          return;
-        }
-
-        setStatus('Your phone is ringing. Pick up if you dare. 🔥', 'success');
-      } catch (err) {
-        console.error(err);
-        setStatus('Network error. The recruiter refused to commute.', 'error');
-      } finally {
-        submitBtn.disabled = false;
-        submitBtn.textContent = 'Roast Me 🔥';
-      }
-    });
-  </script>
+    }
+  });
+  uploadArea.addEventListener('dragover', (e) => { e.preventDefault(); uploadArea.style.borderColor = '#444'; });
+  uploadArea.addEventListener('dragleave', () => { if (!uploadArea.classList.contains('has-file')) uploadArea.style.borderColor = ''; });
+  uploadArea.addEventListener('drop', (e) => {
+    e.preventDefault();
+    const files = e.dataTransfer.files;
+    if (files.length && files[0].type === 'application/pdf') { pdfInput.files = files; pdfInput.dispatchEvent(new Event('change')); }
+  });
+  pasteToggle.addEventListener('click', () => { pasteArea.classList.toggle('visible'); });
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const name = document.getElementById('name').value.trim();
+    const phone = document.getElementById('phone').value.trim();
+    const resumeText = extractedText || resumeTextarea.value.trim();
+    if (!name) { showStatus('Enter your name.', 'error'); return; }
+    if (!phone || !/^\+\d{10,15}$/.test(phone)) { showStatus('Enter your phone in international format, e.g. +919876543210', 'error'); return; }
+    if (resumeText.length < 100) { showStatus('Resume text is too short. Upload a PDF or paste more text.', 'error'); return; }
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Writing your roast...';
+    showStatus('Generating your roast. Your phone will ring in about 15 seconds.', 'loading');
+    try {
+      const res = await fetch('/api/roast', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, phone, resume_text: resumeText }) });
+      const data = await res.json();
+      if (res.ok) { showStatus('Your phone is ringing. Pick up.', 'success'); submitBtn.textContent = 'Roast sent'; }
+      else if (res.status === 429) { showStatus(data.error || 'One roast per hour. Try again later.', 'error'); submitBtn.textContent = 'Roast my resume'; submitBtn.disabled = false; }
+      else { showStatus(data.error || 'Something went wrong. Try again.', 'error'); submitBtn.textContent = 'Roast my resume'; submitBtn.disabled = false; }
+    } catch (err) { showStatus('Connection error. Check your internet and try again.', 'error'); submitBtn.textContent = 'Roast my resume'; submitBtn.disabled = false; }
+  });
+  function showStatus(msg, type) { statusEl.textContent = msg; statusEl.className = 'status visible ' + type; }
+</script>
 </body>
 </html>

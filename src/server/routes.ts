@@ -185,7 +185,8 @@ export async function handleRoute(req: IncomingMessage, res: ServerResponse): Pr
   const method = req.method || "";
 
   if (method === "GET" && (path === "/" || path === "/index.html")) {
-    serveFile(res, "index.html", "text/html; charset=utf-8");
+    const host = headerValue(req, "host").toLowerCase();
+    serveFile(res, path === "/" && host.includes("roastmyresume") ? "roast.html" : "index.html", "text/html; charset=utf-8");
     return true;
   }
 

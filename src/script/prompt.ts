@@ -8,10 +8,17 @@ export function buildScriptPrompt(
 
 STRUCTURE:
 - Open with a warm human greeting using their first name and a one-line vibe setter.
-- Group related stories naturally.
+- Group related stories naturally and keep each story tight.
 - For each story, use the provided "why_relevant" and "matched_context" to frame WHY it matters — but only when the relevance is strong and natural.
-- Use natural spoken connective tissue ('okay, shifting gears...', 'on the D2C side...', 'closer to home...').
-- End with: 'That\\'s the brief — want me to dig into any of these, or is there something else on your mind?'
+- Use short spoken connective tissue ('quickly shifting gears...', 'on the D2C side...', 'closer to home...').
+- End with: 'That\\'s the brief — want to dig into anything?'
+
+VOICE AND LATENCY RULES:
+- Keep sentences short. Aim for 8-14 words per sentence.
+- Prefer two short sentences over one long sentence.
+- Cover the strongest distinct stories without padding.
+- Do not add explicit pause/check-in instructions inside the script.
+- Do not write stage directions, silence markers, or bracketed notes.
 
 PERSONALIZATION RULES (VERY IMPORTANT):
 - Personalization must feel natural, not forced.
@@ -36,9 +43,9 @@ THEMATIC CONSOLIDATION:
 - Cite the strongest or most detailed source. Mention briefly that multiple outlets covered it if relevant (e.g., "widely reported across financial media").
 - Do NOT repeat the same news story from different angles unless each angle provides genuinely distinct insight.
 - Maximum 2 articles per topic cluster. If 4 articles cover RBI rate decision, pick the 2 with the most distinct perspectives and consolidate.
-- Aim for topical diversity in the final script. The listener should hear about 6-8 DIFFERENT topics, not 3 topics repeated from different sources.
+- Aim for topical diversity in the final script. The listener should hear about distinct topics, not repeated angles from different sources.
 
-Target 450-600 words. Tone: ${profile.tone_preference}. Never invent facts not in the articles. If a story lacks detail, keep it short rather than padding.`;
+Target 300-420 words. Tone: ${profile.tone_preference}. Never invent facts not in the articles. If a story lacks detail, keep it short rather than padding.`;
 
   const articlesForPrompt = topArticles.map((a) => ({
     title: a.title,

@@ -5,6 +5,9 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 import { resolve } from "node:path";
 import "dotenv/config";
 import { triggerCallForUser } from "./call-service.js";
+import { supabase as roastSupabase } from "../db/client.js";
+import { generateRoast } from "../roast/generate.js";
+import { triggerRoastCall } from "../roast/call.js";
 
 const supabase = createClient(
   process.env.SUPABASE_URL!,
@@ -167,6 +170,14 @@ Rules:
 
 function getRoutePath(req: IncomingMessage): string {
   return new URL(req.url || "/", "http://localhost").pathname;
+}
+
+function getClientIp(req: IncomingMessage): string {
+  const forwardedFor = headerValue(req, "x-forwarded-for");
+  if (forwardedFor) {
+    return forwardedFor.split(",")[0].trim();
+  }
+  return req.socket.remoteAddress || "unknown";
 }
 
 export async function handleRoute(req: IncomingMessage, res: ServerResponse): Promise<boolean> {
@@ -548,6 +559,129 @@ export async function handleRoute(req: IncomingMessage, res: ServerResponse): Pr
       json(res, 200, { window: windowStart + "-" + windowEnd, usersProcessed: results.length, results });
     } catch (err: any) {
       json(res, 500, { error: err.message });
+    }
+    return true;
+  }
+
+  // ── Roast My Resume routes ────────────────────────────────────────
+  if (method === "GET" && (path === "/roast" || path === "/roast.html")) {
+    serveFile(res, "roast.html", "text/html; charset=utf-8");
+    return true;
+  }
+
+  if (method === "POST" && path === "/api/roast") {
+    const body = await parseBody(req);
+    const name = requiredString(body.name);
+    const phone = requiredString(body.phone).replace(/[\s-]/g, "");
+    const resumeText = requiredString(body.resume_text);
+    const ip = getClientIp(req);
+
+    if (!name) {
+      json(res, 400, { error: "Name is required." });
+      return true;
+    }
+
+    if (!/^\+\d{10,15}$/.test(phone)) {
+      json(res, 400, { error: "Phone must be in international format, e.g. +919876543210." });
+      return true;
+    }
+
+    if (resumeText.length < 100) {
+      json(res, 400, { error: "Resume text is too short. Paste at least a few lines." });
+      return true;
+    }
+
+    try {
+      const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+      const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+
+      const { count: phoneCount, error: phoneLimitErr } = await roastSupabase
+        .from("roast_submissions")
+        .select("id", { count: "exact", head: true })
+        .eq("phone", phone)
+        .gte("created_at", oneHourAgo);
+
+      if (phoneLimitErr) {
+        console.error("[ROAST] Phone rate-limit query failed:", phoneLimitErr.message);
+        json(res, 500, { error: "Roast database is not ready. Run src/db/roast-schema.sql in Supabase." });
+        return true;
+      }
+
+      if ((phoneCount || 0) >= 1) {
+        json(res, 429, { error: "One roast per hour. Try again later." });
+        return true;
+      }
+
+      const { count: ipCount, error: ipLimitErr } = await roastSupabase
+        .from("roast_submissions")
+        .select("id", { count: "exact", head: true })
+        .eq("ip", ip)
+        .gte("created_at", oneDayAgo);
+
+      if (ipLimitErr) {
+        console.error("[ROAST] IP rate-limit query failed:", ipLimitErr.message);
+        json(res, 500, { error: "Roast database is not ready. Run src/db/roast-schema.sql in Supabase." });
+        return true;
+      }
+
+      if ((ipCount || 0) >= 5) {
+        json(res, 429, { error: "Too many roasts from this network today. Try again later." });
+        return true;
+      }
+
+      const { data: submission, error: insertErr } = await roastSupabase
+        .from("roast_submissions")
+        .insert({
+          name,
+          phone,
+          resume_text: resumeText,
+          ip,
+        })
+        .select("id")
+        .single();
+
+      if (insertErr || !submission) {
+        console.error("[ROAST] Insert failed:", insertErr?.message);
+        json(res, 500, { error: "Could not save your resume roast request." });
+        return true;
+      }
+
+      let roastScript: string;
+      try {
+        roastScript = await generateRoast(resumeText);
+      } catch (err: any) {
+        console.error("[ROAST] GPT-4o generation failed:", err.message);
+        json(res, 500, { error: "The recruiter couldn't write the roast. Try again in a minute." });
+        return true;
+      }
+
+      await roastSupabase
+        .from("roast_submissions")
+        .update({ roast_script: roastScript })
+        .eq("id", submission.id);
+
+      let callId: string;
+      try {
+        callId = await triggerRoastCall(name, phone, roastScript);
+      } catch (err: any) {
+        console.error("[ROAST] Vapi call failed:", err.response?.data || err.message);
+        json(res, 500, { error: "The roast was written, but the call could not be started. Check Vapi config." });
+        return true;
+      }
+
+      await roastSupabase
+        .from("roast_submissions")
+        .update({ call_id: callId })
+        .eq("id", submission.id);
+
+      json(res, 200, {
+        success: true,
+        message: "Your phone is ringing. Pick up.",
+        callId,
+      });
+    } catch (err: any) {
+      console.error("[ROAST] Unexpected error:", err.message);
+      json(res, 500, { error: "Something went wrong while preparing the roast." });
     }
     return true;
   }

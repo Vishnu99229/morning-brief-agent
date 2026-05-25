@@ -1,5 +1,3 @@
-delete process.env.OPENAI_API_KEY;
-
 import "dotenv/config";
 import http from "node:http";
 import { handleRoute } from "../server/routes.js";

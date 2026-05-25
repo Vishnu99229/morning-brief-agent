@@ -14,29 +14,39 @@ function todayIsoDate(): string {
 }
 
 async function ensureFreshNewsPool() {
-  // Auto-ingest if news pool is stale.
+  // Keep the call path non-blocking. Scheduled ingest should refresh the pool.
   const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
-  const { data: recentArticles } = await supabase
+  const { data: recentArticles, error } = await supabase
     .from("news_pool")
     .select("id")
     .gte("fetched_at", oneHourAgo)
     .limit(1);
 
-  if (!recentArticles || recentArticles.length === 0) {
-    console.log("[CALL-SERVICE] News pool is stale - running ingest...");
-    try {
-      const { execSync } = await import("node:child_process");
-      execSync("npx tsx src/cli/ingest.ts", {
-        cwd: process.cwd(),
-        timeout: 120000,
-        stdio: "pipe",
-      });
-      console.log("[CALL-SERVICE] Ingest completed");
-    } catch (ingestErr: any) {
-      console.error("[CALL-SERVICE] Ingest failed:", ingestErr.message);
-      // Continue anyway - there might still be articles from the last 30 hours.
-    }
+  if (error) {
+    console.warn("[CALL-SERVICE] Could not check news freshness:", error.message);
+    return;
   }
+
+  if (!recentArticles || recentArticles.length === 0) {
+    console.warn(
+      "[CALL-SERVICE] News pool is stale; skipping inline ingest to avoid blocking calls. " +
+      "Ensure /api/cron/ingest is scheduled."
+    );
+  }
+}
+
+function buildProfileContext(profile: any): string {
+  return JSON.stringify({
+    role: profile.role_context,
+    active_work: Array.isArray(profile.active_work)
+      ? profile.active_work.map((work: any) => ({
+        name: work.name,
+        why_news_matters: work.why_news_matters,
+      }))
+      : [],
+    vip_entities: profile.vip_entities,
+    tone: profile.tone_preference,
+  });
 }
 
 async function getOrCreateBriefing(userId: string) {
@@ -106,12 +116,7 @@ export async function triggerCallForUser(userId: string): Promise<CallResult> {
       variableValues: {
         name: profile.name,
         briefing_script: briefing.briefing_script,
-        profile_context: JSON.stringify({
-          role_context: profile.role_context,
-          active_work: profile.active_work,
-          vip_entities: profile.vip_entities,
-          tone_preference: profile.tone_preference,
-        }),
+        profile_context: buildProfileContext(profile),
       },
     },
   };

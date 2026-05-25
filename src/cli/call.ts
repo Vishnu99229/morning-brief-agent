@@ -9,6 +9,20 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_KEY!
 );
 
+function buildProfileContext(profile: any): string {
+  return JSON.stringify({
+    role: profile.role_context,
+    active_work: Array.isArray(profile.active_work)
+      ? profile.active_work.map((work: any) => ({
+        name: work.name,
+        why_news_matters: work.why_news_matters,
+      }))
+      : [],
+    vip_entities: profile.vip_entities,
+    tone: profile.tone_preference,
+  });
+}
+
 async function triggerCall(userId: string) {
   const today = new Date().toISOString().split("T")[0];
 
@@ -61,12 +75,7 @@ async function triggerCall(userId: string) {
       variableValues: {
         name: profile.name,
         briefing_script: briefing.briefing_script,
-        profile_context: JSON.stringify({
-          role_context: profile.role_context,
-          active_work: profile.active_work,
-          vip_entities: profile.vip_entities,
-          tone_preference: profile.tone_preference,
-        }),
+        profile_context: buildProfileContext(profile),
         article_count: (briefing.selected_articles_json as any[]).length.toString(),
       },
     },
